@@ -9,6 +9,11 @@ export default defineConfig({
     host: '0.0.0.0',
     strictPort: true,
     cors: true,
+    allowedHosts: [
+      '5173-ipiyu6278hxw01fehjgee-5185f4aa.sandbox.novita.ai',
+      '.sandbox.novita.ai',
+      'localhost',
+    ],
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -32,5 +37,10 @@ export default defineConfig({
     host: '0.0.0.0',
     strictPort: true,
     cors: true,
+    allowedHosts: [
+      '5173-ipiyu6278hxw01fehjgee-5185f4aa.sandbox.novita.ai',
+      '.sandbox.novita.ai',
+      'localhost',
+    ],
   },
 })
