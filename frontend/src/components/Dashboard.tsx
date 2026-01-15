@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -11,12 +11,24 @@ import {
   Paper,
   Tab,
   Tabs,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import SettingsIcon from '@mui/icons-material/Settings';
 import MarketQuoteCard from '../components/MarketQuoteCard';
 import TrendAnalysis from '../components/TrendAnalysis';
 import TradingSignal from '../components/TradingSignal';
 import NewsList from '../components/NewsList';
+import MultiChartView from '../components/MultiChartView';
+import IndicatorSettings from '../components/IndicatorSettings';
+import {
+  IndicatorSettings as IndicatorSettingsType,
+  defaultIndicatorSettings,
+  loadIndicatorSettings,
+  saveIndicatorSettings,
+} from '../types/indicators';
+import { marketAPI } from '../services/api';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -44,6 +56,42 @@ const Dashboard: React.FC = () => {
   const [symbol, setSymbol] = useState('AAPL');
   const [inputSymbol, setInputSymbol] = useState('AAPL');
   const [tabValue, setTabValue] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [indicatorSettings, setIndicatorSettings] =
+    useState<IndicatorSettingsType>(defaultIndicatorSettings);
+  const [chartData, setChartData] = useState<Record<string, any>>({});
+
+  // インジケーター設定をロード
+  useEffect(() => {
+    const settings = loadIndicatorSettings();
+    setIndicatorSettings(settings);
+  }, []);
+
+  // チャートデータを取得
+  useEffect(() => {
+    const fetchChartData = async () => {
+      try {
+        const data: Record<string, any> = {};
+        for (const tf of timeframes) {
+          const trend = await marketAPI.getTrend(symbol, tf);
+          data[tf] = {
+            timeframe: tf,
+            trend: trend.direction,
+            strength: trend.strength,
+            price: Math.random() * 1000 + 100, // デモデータ
+          };
+        }
+        setChartData(data);
+      } catch (error) {
+        console.error('Failed to fetch chart data:', error);
+      }
+    };
+
+    fetchChartData();
+    const interval = setInterval(fetchChartData, 60000); // 1分ごとに更新
+
+    return () => clearInterval(interval);
+  }, [symbol]);
 
   const handleSymbolChange = () => {
     if (inputSymbol.trim()) {
@@ -53,6 +101,19 @@ const Dashboard: React.FC = () => {
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const handleOpenSettings = () => {
+    setSettingsOpen(true);
+  };
+
+  const handleCloseSettings = () => {
+    setSettingsOpen(false);
+  };
+
+  const handleSaveSettings = (settings: IndicatorSettingsType) => {
+    setIndicatorSettings(settings);
+    saveIndicatorSettings(settings);
   };
 
   const timeframes = ['15m', '1h', '4h', '1d'];
@@ -65,6 +126,11 @@ const Dashboard: React.FC = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Market Analysis System - リアルタイム市場分析
           </Typography>
+          <Tooltip title="インジケーター設定">
+            <IconButton color="inherit" onClick={handleOpenSettings}>
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
         </Toolbar>
       </AppBar>
 
@@ -101,6 +167,7 @@ const Dashboard: React.FC = () => {
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
           <Tabs value={tabValue} onChange={handleTabChange}>
             <Tab label="概要" />
+            <Tab label="マルチチャート" />
             <Tab label="トレンド分析" />
             <Tab label="シグナル" />
             <Tab label="ニュース" />
@@ -122,6 +189,16 @@ const Dashboard: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
+          <MultiChartView
+            symbol={symbol}
+            timeframes={timeframes}
+            chartData={chartData}
+            indicatorSettings={indicatorSettings}
+            onOpenSettings={handleOpenSettings}
+          />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={2}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <TrendAnalysis symbol={symbol} timeframes={timeframes} />
@@ -129,7 +206,7 @@ const Dashboard: React.FC = () => {
           </Grid>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel value={tabValue} index={3}>
           <Grid container spacing={3}>
             {timeframes.map((tf) => (
               <Grid item xs={12} md={6} key={tf}>
@@ -139,7 +216,7 @@ const Dashboard: React.FC = () => {
           </Grid>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel value={tabValue} index={4}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <NewsList symbols={[symbol]} limit={20} />
@@ -147,6 +224,14 @@ const Dashboard: React.FC = () => {
           </Grid>
         </TabPanel>
       </Container>
+
+      {/* インジケーター設定ダイアログ */}
+      <IndicatorSettings
+        open={settingsOpen}
+        settings={indicatorSettings}
+        onClose={handleCloseSettings}
+        onSave={handleSaveSettings}
+      />
     </Box>
   );
 };
