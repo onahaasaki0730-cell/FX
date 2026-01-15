@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+import os
 
 from .core.config import settings
 from .api import market, news, signals, websocket
@@ -29,12 +31,17 @@ app.include_router(websocket.router)
 
 @app.get("/")
 async def root():
-    """ルートエンドポイント"""
+    """ルートエンドポイント - デモページを表示"""
+    demo_path = os.path.join(os.path.dirname(__file__), "..", "demo.html")
+    if os.path.exists(demo_path):
+        return FileResponse(demo_path)
+    
     return {
         "name": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "status": "running",
         "endpoints": {
+            "demo": "/",
             "docs": "/docs",
             "market_data": f"{settings.API_V1_PREFIX}/market",
             "news": f"{settings.API_V1_PREFIX}/news",
