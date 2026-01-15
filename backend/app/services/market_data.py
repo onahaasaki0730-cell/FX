@@ -20,6 +20,7 @@ class MarketDataService:
         TimeFrame.M5: "5m",
         TimeFrame.M15: "15m",
         TimeFrame.M30: "30m",
+        TimeFrame.M45: "1h",  # 45mは直接サポートされていないため1hで代用
         TimeFrame.H1: "1h",
         TimeFrame.H4: "4h",
         TimeFrame.D1: "1d",
@@ -33,6 +34,7 @@ class MarketDataService:
         TimeFrame.M5: "5d",
         TimeFrame.M15: "5d",
         TimeFrame.M30: "1mo",
+        TimeFrame.M45: "1mo",  # 45mは1hデータを使用するため
         TimeFrame.H1: "1mo",
         TimeFrame.H4: "3mo",
         TimeFrame.D1: "1y",
