@@ -29,6 +29,15 @@ app.include_router(signals.router, prefix=settings.API_V1_PREFIX)
 app.include_router(websocket.router)
 
 
+@app.get("/charts")
+async def charts_page():
+    """チャートページを表示"""
+    charts_path = os.path.join(os.path.dirname(__file__), "..", "charts.html")
+    if os.path.exists(charts_path):
+        return FileResponse(charts_path)
+    return {"error": "Charts page not found"}
+
+
 @app.get("/")
 async def root():
     """ルートエンドポイント - デモページを表示"""
@@ -42,6 +51,7 @@ async def root():
         "status": "running",
         "endpoints": {
             "demo": "/",
+            "charts": "/charts",
             "docs": "/docs",
             "market_data": f"{settings.API_V1_PREFIX}/market",
             "news": f"{settings.API_V1_PREFIX}/news",

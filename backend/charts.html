@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Analysis - リアルタイムチャート</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #0f0f1e;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #2a2a4e;
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+            color: #4fc3f7;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .symbol-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .symbol-input input {
+            padding: 10px 15px;
+            background: #1a1a2e;
+            border: 2px solid #2a2a4e;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1em;
+            width: 150px;
+        }
+        
+        .symbol-input button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .symbol-input button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .main-container {
+            display: flex;
+            height: calc(100vh - 70px);
+        }
+        
+        .charts-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 10px;
+            padding: 10px;
+            background: #0f0f1e;
+        }
+        
+        .chart-container {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 15px;
+            position: relative;
+            border: 2px solid #2a2a4e;
+            transition: border-color 0.3s;
+        }
+        
+        .chart-container:hover {
+            border-color: #4fc3f7;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .chart-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #4fc3f7;
+        }
+        
+        .chart-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .trend-badge {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .trend-bullish {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+        
+        .trend-bearish {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+        
+        .trend-sideways {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+        }
+        
+        .chart-canvas {
+            height: calc(100% - 40px);
+        }
+        
+        .sidebar {
+            width: 400px;
+            background: #1a1a2e;
+            border-left: 2px solid #2a2a4e;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .info-card {
+            background: rgba(42, 42, 78, 0.5);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #2a2a4e;
+        }
+        
+        .info-card h3 {
+            color: #4fc3f7;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .price-display {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .price-positive {
+            color: #4caf50;
+        }
+        
+        .price-negative {
+            color: #f44336;
+        }
+        
+        .price-change {
+            font-size: 1.2em;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .signal-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .signal-type {
+            font-size: 1.5em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .signal-buy {
+            color: #4caf50;
+        }
+        
+        .signal-sell {
+            color: #f44336;
+        }
+        
+        .signal-neutral {
+            color: #ff9800;
+        }
+        
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #4caf50 100%);
+            transition: width 0.5s ease;
+        }
+        
+        .indicator-list {
+            list-style: none;
+        }
+        
+        .indicator-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: rgba(42, 42, 78, 0.5);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .indicator-name {
+            font-weight: 600;
+            color: #b0b0b0;
+        }
+        
+        .indicator-value {
+            font-weight: bold;
+            color: #e0e0e0;
+        }
+        
+        .reasons-list {
+            list-style: none;
+        }
+        
+        .reason-item {
+            padding: 10px;
+            background: rgba(42, 42, 78, 0.3);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border-left: 3px solid #4fc3f7;
+            font-size: 0.95em;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #4fc3f7;
+            font-size: 1.2em;
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(79, 195, 247, 0.3);
+            border-top: 3px solid #4fc3f7;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(244, 67, 54, 0.2);
+            border-radius: 15px;
+            font-size: 0.85em;
+        }
+        
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #f44336;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .error-message {
+            background: rgba(244, 67, 54, 0.2);
+            border: 2px solid #f44336;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px;
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            📊 Market Analysis - リアルタイムチャート
+            <span class="live-indicator">
+                <span class="live-dot"></span>
+                LIVE
+            </span>
+        </h1>
+        <div class="symbol-input">
+            <input type="text" id="symbolInput" value="AAPL" placeholder="Symbol (e.g., AAPL)">
+            <button onclick="loadSymbol()">分析開始</button>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="charts-grid">
+            <div class="chart-container" id="chart-15m">
+                <div class="chart-header">
+                    <span class="chart-title">15分足</span>
+                    <div class="chart-status">
+                        <span class="trend-badge" id="trend-15m">-</span>
+                    </div>
+                </div>
+                <div class="chart-canvas" id="chartCanvas-15m"></div>
+            </div>
+            
+            <div class="chart-container" id="chart-1h">
+                <div class="chart-header">
+                    <span class="chart-title">1時間足</span>
+                    <div class="chart-status">
+                        <span class="trend-badge" id="trend-1h">-</span>
+                    </div>
+                </div>
+                <div class="chart-canvas" id="chartCanvas-1h"></div>
+            </div>
+            
+            <div class="chart-container" id="chart-4h">
+                <div class="chart-header">
+                    <span class="chart-title">4時間足</span>
+                    <div class="chart-status">
+                        <span class="trend-badge" id="trend-4h">-</span>
+                    </div>
+                </div>
+                <div class="chart-canvas" id="chartCanvas-4h"></div>
+            </div>
+            
+            <div class="chart-container" id="chart-1d">
+                <div class="chart-header">
+                    <span class="chart-title">日足</span>
+                    <div class="chart-status">
+                        <span class="trend-badge" id="trend-1d">-</span>
+                    </div>
+                </div>
+                <div class="chart-canvas" id="chartCanvas-1d"></div>
+            </div>
+        </div>
+        
+        <div class="sidebar" id="sidebar">
+            <div class="loading" id="loadingIndicator">
+                <div class="loading-spinner"></div>
+                データ読み込み中...
+            </div>
+            <div id="analysisContent" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = '/api/v1';
+        const charts = {};
+        const candlestickSeries = {};
+        const supportLines = {};
+        const resistanceLines = {};
+        let currentSymbol = 'AAPL';
+        
+        const timeframes = [
+            { id: '15m', name: '15分足' },
+            { id: '1h', name: '1時間足' },
+            { id: '4h', name: '4時間足' },
+            { id: '1d', name: '日足' }
+        ];
+        
+        // チャートの初期化
+        function initCharts() {
+            timeframes.forEach(tf => {
+                const container = document.getElementById(`chartCanvas-${tf.id}`);
+                const chart = LightweightCharts.createChart(container, {
+                    layout: {
+                        background: { color: '#1a1a2e' },
+                        textColor: '#e0e0e0',
+                    },
+                    grid: {
+                        vertLines: { color: '#2a2a4e' },
+                        horzLines: { color: '#2a2a4e' },
+                    },
+                    crosshair: {
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                    },
+                    rightPriceScale: {
+                        borderColor: '#2a2a4e',
+                    },
+                    timeScale: {
+                        borderColor: '#2a2a4e',
+                        timeVisible: true,
+                        secondsVisible: false,
+                    },
+                });
+                
+                const series = chart.addCandlestickSeries({
+                    upColor: '#4caf50',
+                    downColor: '#f44336',
+                    borderUpColor: '#4caf50',
+                    borderDownColor: '#f44336',
+                    wickUpColor: '#4caf50',
+                    wickDownColor: '#f44336',
+                });
+                
+                charts[tf.id] = chart;
+                candlestickSeries[tf.id] = series;
+                supportLines[tf.id] = {
+                    lines: [],
+                    sma20: null,
+                    sma50: null,
+                    bbUpper: null,
+                    bbLower: null
+                };
+                resistanceLines[tf.id] = [];
+                
+                // レスポンシブ対応
+                new ResizeObserver(() => {
+                    chart.applyOptions({ width: container.clientWidth });
+                }).observe(container);
+            });
+        }
+        
+        // チャートにテクニカル指標とレベルを追加
+        function addIndicatorsAndLevels(timeframe, history, indicators, trend) {
+            const chart = charts[timeframe];
+            const support = supportLines[timeframe];
+            const resistance = resistanceLines[timeframe];
+            
+            // 既存のラインをクリア
+            if (support.lines) {
+                support.lines.forEach(line => chart.removeSeries(line));
+            }
+            if (resistance) {
+                resistance.forEach(line => chart.removeSeries(line));
+            }
+            if (support.sma20) chart.removeSeries(support.sma20);
+            if (support.sma50) chart.removeSeries(support.sma50);
+            if (support.bbUpper) chart.removeSeries(support.bbUpper);
+            if (support.bbLower) chart.removeSeries(support.bbLower);
+            
+            support.lines = [];
+            resistanceLines[timeframe] = [];
+            
+            // 移動平均線を追加（SMA20）
+            if (indicators.sma_20) {
+                support.sma20 = chart.addLineSeries({
+                    color: 'rgba(79, 195, 247, 0.8)',
+                    lineWidth: 2,
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    title: 'SMA(20)'
+                });
+            }
+            
+            // 移動平均線を追加（SMA50）
+            if (indicators.sma_50) {
+                support.sma50 = chart.addLineSeries({
+                    color: 'rgba(255, 152, 0, 0.8)',
+                    lineWidth: 2,
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    title: 'SMA(50)'
+                });
+            }
+            
+            // ボリンジャーバンド上限
+            if (indicators.bb_upper) {
+                support.bbUpper = chart.addLineSeries({
+                    color: 'rgba(156, 39, 176, 0.5)',
+                    lineWidth: 1,
+                    lineStyle: LightweightCharts.LineStyle.Dashed,
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    title: 'BB Upper'
+                });
+            }
+            
+            // ボリンジャーバンド下限
+            if (indicators.bb_lower) {
+                support.bbLower = chart.addLineSeries({
+                    color: 'rgba(156, 39, 176, 0.5)',
+                    lineWidth: 1,
+                    lineStyle: LightweightCharts.LineStyle.Dashed,
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    title: 'BB Lower'
+                });
+            }
+            
+            // サポートレベル（水平線）
+            trend.support_levels.slice(0, 3).forEach(level => {
+                const priceLine = {
+                    price: level,
+                    color: 'rgba(76, 175, 80, 0.6)',
+                    lineWidth: 2,
+                    lineStyle: LightweightCharts.LineStyle.Dashed,
+                    axisLabelVisible: true,
+                    title: `Support: ${level.toFixed(2)}`
+                };
+                candlestickSeries[timeframe].createPriceLine(priceLine);
+            });
+            
+            // レジスタンスレベル（水平線）
+            trend.resistance_levels.slice(0, 3).forEach(level => {
+                const priceLine = {
+                    price: level,
+                    color: 'rgba(244, 67, 54, 0.6)',
+                    lineWidth: 2,
+                    lineStyle: LightweightCharts.LineStyle.Dashed,
+                    axisLabelVisible: true,
+                    title: `Resistance: ${level.toFixed(2)}`
+                };
+                candlestickSeries[timeframe].createPriceLine(priceLine);
+            });
+        }
+        
+        // シンボルを読み込む
+        async function loadSymbol() {
+            currentSymbol = document.getElementById('symbolInput').value.toUpperCase();
+            
+            document.getElementById('loadingIndicator').style.display = 'flex';
+            document.getElementById('analysisContent').style.display = 'none';
+            
+            try {
+                // 全時間足のデータを並列取得
+                const promises = timeframes.map(tf => 
+                    Promise.all([
+                        fetch(`${BASE_URL}/market/history/${currentSymbol}?timeframe=${tf.id}`).then(r => r.json()),
+                        fetch(`${BASE_URL}/market/trend/${currentSymbol}?timeframe=${tf.id}`).then(r => r.json()),
+                        fetch(`${BASE_URL}/market/indicators/${currentSymbol}?timeframe=${tf.id}`).then(r => r.json())
+                    ])
+                );
+                
+                const results = await Promise.all(promises);
+                
+                // 各チャートを更新
+                results.forEach((data, index) => {
+                    const tf = timeframes[index];
+                    const [history, trend, indicators] = data;
+                    
+                    // ローソク足データを設定
+                    const candleData = history.map(candle => ({
+                        time: new Date(candle.timestamp).getTime() / 1000,
+                        open: candle.open,
+                        high: candle.high,
+                        low: candle.low,
+                        close: candle.close,
+                    }));
+                    
+                    candlestickSeries[tf.id].setData(candleData);
+                    
+                    // トレンドバッジを更新
+                    updateTrendBadge(tf.id, trend.direction, trend.strength);
+                    
+                    // サポート/レジスタンスラインを追加
+                    // addLevels(tf.id, trend.support_levels, trend.resistance_levels);
+                });
+                
+                // 現在価格とシグナルを取得
+                const [quote, signal] = await Promise.all([
+                    fetch(`${BASE_URL}/market/quote/${currentSymbol}`).then(r => r.json()),
+                    fetch(`${BASE_URL}/signals/${currentSymbol}?timeframe=1h`).then(r => r.json())
+                ]);
+                
+                // エントリー/エグジットポイントをマーカーで表示（1h チャート）
+                if (signal.entry_price) {
+                    addSignalMarkers('1h', signal);
+                }
+                
+                // サイドバーを更新
+                updateSidebar(quote, signal, results[1][2]); // 1h indicators
+                
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('analysisContent').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('sidebar').innerHTML = 
+                    `<div class="error-message">❌ データの読み込みに失敗しました: ${error.message}</div>`;
+            }
+        }
+        
+        // トレンドバッジを更新
+        function updateTrendBadge(timeframe, direction, strength) {
+            const badge = document.getElementById(`trend-${timeframe}`);
+            badge.className = 'trend-badge';
+            
+            let text = '';
+            if (direction === 'bullish') {
+                badge.classList.add('trend-bullish');
+                text = `↗ 上昇 ${strength.toFixed(0)}%`;
+            } else if (direction === 'bearish') {
+                badge.classList.add('trend-bearish');
+                text = `↘ 下降 ${strength.toFixed(0)}%`;
+            } else {
+                badge.classList.add('trend-sideways');
+                text = `↔ レンジ ${strength.toFixed(0)}%`;
+            }
+            
+            badge.textContent = text;
+        }
+        
+        // サイドバーを更新
+        function updateSidebar(quote, signal, indicators) {
+            const isPositive = quote.change >= 0;
+            const signalClass = signal.signal.includes('buy') ? 'signal-buy' : 
+                                signal.signal.includes('sell') ? 'signal-sell' : 'signal-neutral';
+            
+            const html = `
+                <div class="info-card">
+                    <h3>💰 ${quote.symbol}</h3>
+                    <div class="price-display ${isPositive ? 'price-positive' : 'price-negative'}">
+                        $${quote.price.toFixed(2)}
+                    </div>
+                    <div class="price-change">
+                        <span class="${isPositive ? 'price-positive' : 'price-negative'}">
+                            ${isPositive ? '▲' : '▼'} ${Math.abs(quote.change).toFixed(2)}
+                        </span>
+                        <span class="${isPositive ? 'price-positive' : 'price-negative'}">
+                            (${isPositive ? '+' : ''}${quote.change_percent.toFixed(2)}%)
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 0.9em;">
+                        <div>高値: <strong>$${quote.high.toFixed(2)}</strong></div>
+                        <div>安値: <strong>$${quote.low.toFixed(2)}</strong></div>
+                    </div>
+                </div>
+                
+                <div class="signal-card">
+                    <h3>💡 トレーディングシグナル</h3>
+                    <div class="signal-header">
+                        <span class="signal-type ${signalClass}">
+                            ${getSignalText(signal.signal)}
+                        </span>
+                        <span style="font-size: 1.2em; font-weight: bold;">
+                            ${signal.confidence.toFixed(0)}%
+                        </span>
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" style="width: ${signal.confidence}%"></div>
+                    </div>
+                    
+                    ${signal.entry_price ? `
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; font-size: 0.9em;">
+                        <div style="text-align: center;">
+                            <div style="color: #b0b0b0;">エントリー</div>
+                            <div style="font-weight: bold; color: #4fc3f7;">$${signal.entry_price.toFixed(2)}</div>
+                        </div>
+                        ${signal.stop_loss ? `
+                        <div style="text-align: center;">
+                            <div style="color: #b0b0b0;">損切り</div>
+                            <div style="font-weight: bold; color: #f44336;">$${signal.stop_loss.toFixed(2)}</div>
+                        </div>
+                        ` : ''}
+                        ${signal.take_profit ? `
+                        <div style="text-align: center;">
+                            <div style="color: #b0b0b0;">利確</div>
+                            <div style="font-weight: bold; color: #4caf50;">$${signal.take_profit.toFixed(2)}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+                    
+                    <div style="margin-top: 15px;">
+                        <h4 style="color: #b0b0b0; margin-bottom: 10px; font-size: 0.95em;">シグナルの根拠:</h4>
+                        <ul class="reasons-list">
+                            ${signal.reasons.map(r => `<li class="reason-item">✓ ${r}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <h3>📈 テクニカル指標</h3>
+                    <ul class="indicator-list">
+                        ${indicators.rsi !== null ? `
+                        <li class="indicator-item">
+                            <span class="indicator-name">RSI</span>
+                            <span class="indicator-value" style="color: ${getRSIColor(indicators.rsi)}">
+                                ${indicators.rsi.toFixed(1)}
+                            </span>
+                        </li>` : ''}
+                        
+                        ${indicators.macd !== null ? `
+                        <li class="indicator-item">
+                            <span class="indicator-name">MACD</span>
+                            <span class="indicator-value" style="color: ${indicators.macd > 0 ? '#4caf50' : '#f44336'}">
+                                ${indicators.macd.toFixed(4)}
+                            </span>
+                        </li>` : ''}
+                        
+                        ${indicators.sma_20 !== null ? `
+                        <li class="indicator-item">
+                            <span class="indicator-name">SMA(20)</span>
+                            <span class="indicator-value">$${indicators.sma_20.toFixed(2)}</span>
+                        </li>` : ''}
+                        
+                        ${indicators.sma_50 !== null ? `
+                        <li class="indicator-item">
+                            <span class="indicator-name">SMA(50)</span>
+                            <span class="indicator-value">$${indicators.sma_50.toFixed(2)}</span>
+                        </li>` : ''}
+                        
+                        ${indicators.bb_upper !== null ? `
+                        <li class="indicator-item">
+                            <span class="indicator-name">ボリンジャー上限</span>
+                            <span class="indicator-value">$${indicators.bb_upper.toFixed(2)}</span>
+                        </li>
+                        <li class="indicator-item">
+                            <span class="indicator-name">ボリンジャー下限</span>
+                            <span class="indicator-value">$${indicators.bb_lower.toFixed(2)}</span>
+                        </li>` : ''}
+                    </ul>
+                </div>
+            `;
+            
+            document.getElementById('analysisContent').innerHTML = html;
+        }
+        
+        function getSignalText(signal) {
+            const map = {
+                'strong_buy': '強い買い',
+                'buy': '買い',
+                'neutral': '中立',
+                'sell': '売り',
+                'strong_sell': '強い売り'
+            };
+            return map[signal] || signal;
+        }
+        
+        function getRSIColor(rsi) {
+            if (rsi > 70) return '#f44336';
+            if (rsi < 30) return '#4caf50';
+            return '#ff9800';
+        }
+        
+        // 初期化
+        window.addEventListener('load', () => {
+            initCharts();
+            loadSymbol();
+            
+            // 60秒ごとに自動更新
+            setInterval(loadSymbol, 60000);
+        });
+        
+        // Enterキーで検索
+        document.getElementById('symbolInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadSymbol();
+            }
+        });
+    </script>
+</body>
+</html>
