@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FX Market Analysis - MT5 リアルタイムチャート</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #0f0f1e;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 15px 30px;
+            border-bottom: 2px solid #2a2a4e;
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+            color: #4fc3f7;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-size: 0.85em;
+            color: #b0b0b0;
+            font-weight: 600;
+        }
+        
+        .control-group select, .control-group button {
+            padding: 10px 15px;
+            background: #1a1a2e;
+            border: 2px solid #2a2a4e;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        .control-group select:hover, .control-group button:hover {
+            border-color: #4fc3f7;
+        }
+        
+        .control-group button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .control-group button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .timeframe-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .timeframe-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 12px;
+            background: #1a1a2e;
+            border: 2px solid #2a2a4e;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .timeframe-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .timeframe-checkbox:has(input:checked) {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+        
+        .timeframe-checkbox label {
+            cursor: pointer;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .main-container {
+            display: flex;
+            height: calc(100vh - 130px);
+        }
+        
+        .charts-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 10px;
+            padding: 10px;
+            background: #0f0f1e;
+        }
+        
+        .chart-container {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 10px;
+            position: relative;
+            border: 2px solid #2a2a4e;
+            transition: border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chart-container:hover {
+            border-color: #4fc3f7;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            padding: 5px;
+        }
+        
+        .chart-title {
+            font-size: 1em;
+            font-weight: 600;
+            color: #4fc3f7;
+        }
+        
+        .chart-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .trend-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        
+        .trend-bullish {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+        
+        .trend-bearish {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+        
+        .trend-sideways {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+        }
+        
+        .chart-embed {
+            flex: 1;
+            border: none;
+            border-radius: 8px;
+            background: #131722;
+        }
+        
+        .sidebar {
+            width: 380px;
+            background: #1a1a2e;
+            border-left: 2px solid #2a2a4e;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .info-card {
+            background: rgba(42, 42, 78, 0.5);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #2a2a4e;
+        }
+        
+        .info-card h3 {
+            color: #4fc3f7;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .price-display {
+            font-size: 2.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .price-positive {
+            color: #4caf50;
+        }
+        
+        .price-negative {
+            color: #f44336;
+        }
+        
+        .price-change {
+            font-size: 1.1em;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .signal-card {
+            background: rgba(102, 126, 234, 0.1);
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .signal-type {
+            font-size: 1.4em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .signal-buy {
+            color: #4caf50;
+        }
+        
+        .signal-sell {
+            color: #f44336;
+        }
+        
+        .signal-neutral {
+            color: #ff9800;
+        }
+        
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #4caf50 100%);
+            transition: width 0.5s ease;
+        }
+        
+        .indicator-list {
+            list-style: none;
+        }
+        
+        .indicator-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(42, 42, 78, 0.5);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .indicator-name {
+            font-weight: 600;
+            color: #b0b0b0;
+            font-size: 0.9em;
+        }
+        
+        .indicator-value {
+            font-weight: bold;
+            color: #e0e0e0;
+            font-size: 0.95em;
+        }
+        
+        .reasons-list {
+            list-style: none;
+        }
+        
+        .reason-item {
+            padding: 10px;
+            background: rgba(42, 42, 78, 0.3);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border-left: 3px solid #4fc3f7;
+            font-size: 0.9em;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #4fc3f7;
+            font-size: 1.1em;
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(79, 195, 247, 0.3);
+            border-top: 3px solid #4fc3f7;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(244, 67, 54, 0.2);
+            border-radius: 15px;
+            font-size: 0.85em;
+        }
+        
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #f44336;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .error-message {
+            background: rgba(244, 67, 54, 0.2);
+            border: 2px solid #f44336;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px;
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            💹 FX Market Analysis - MT5 リアルタイムチャート
+            <span class="live-indicator">
+                <span class="live-dot"></span>
+                LIVE
+            </span>
+        </h1>
+        <div class="controls">
+            <div class="control-group">
+                <label>通貨ペア</label>
+                <select id="pairSelect">
+                    <option value="EURUSD">EUR/USD</option>
+                    <option value="EURJPY">EUR/JPY</option>
+                    <option value="USDJPY">USD/JPY</option>
+                    <option value="XAUUSD">XAU/USD (金)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>時間足を選択（4つまで）</label>
+                <div class="timeframe-selector">
+                    <div class="timeframe-checkbox">
+                        <input type="checkbox" id="tf-1m" value="1" data-label="1分足">
+                        <label for="tf-1m">1分</label>
+                    </div>
+                    <div class="timeframe-checkbox">
+                        <input type="checkbox" id="tf-5m" value="5" data-label="5分足">
+                        <label for="tf-5m">5分</label>
+                    </div>
+                    <div class="timeframe-checkbox">
+                        <input type="checkbox" id="tf-15m" value="15" data-label="15分足" checked>
+                        <label for="tf-15m">15分</label>
+                    </div>
+                    <div class="timeframe-checkbox">
+                        <input type="checkbox" id="tf-30m" value="30" data-label="30分足">
+                        <label for="tf-30m">30分</label>
+                    </div>
+                    <div class="timeframe-checkbox">
+                        <input type="checkbox" id="tf-1h" value="60" data-label="1時間足" checked>
+                        <label for="tf-1h">1時間</label>
+                    </div>
+                    <div class="timeframe-checkbox">
+                        <input type="checkbox" id="tf-4h" value="240" data-label="4時間足" checked>
+                        <label for="tf-4h">4時間</label>
+                    </div>
+                    <div class="timeframe-checkbox">
+                        <input type="checkbox" id="tf-1d" value="D" data-label="日足" checked>
+                        <label for="tf-1d">日足</label>
+                    </div>
+                    <div class="timeframe-checkbox">
+                        <input type="checkbox" id="tf-1w" value="W" data-label="週足">
+                        <label for="tf-1w">週足</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <button onclick="loadCharts()">チャート表示</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="charts-grid" id="chartsGrid">
+            <div class="chart-container">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    時間足を選択して「チャート表示」をクリックしてください
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar" id="sidebar">
+            <div class="loading" id="loadingIndicator">
+                <div class="loading-spinner"></div>
+                データ読み込み中...
+            </div>
+            <div id="analysisContent" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = '/api/v1';
+        let currentPair = 'EURUSD';
+        let selectedTimeframes = [];
+        
+        // 通貨ペアのシンボルマッピング（yfinance用）
+        const symbolMap = {
+            'EURUSD': 'EURUSD=X',
+            'EURJPY': 'EURJPY=X',
+            'USDJPY': 'USDJPY=X',
+            'XAUUSD': 'GC=F'  // Gold Futures
+        };
+        
+        // 時間足のマッピング（API用）
+        const timeframeMap = {
+            '1': '1m',
+            '5': '5m',
+            '15': '15m',
+            '30': '30m',
+            '60': '1h',
+            '240': '4h',
+            'D': '1d',
+            'W': '1w'
+        };
+        
+        // チェックボックスの制限（最大4つまで）
+        document.querySelectorAll('.timeframe-checkbox input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const checkedCount = document.querySelectorAll('.timeframe-checkbox input[type="checkbox"]:checked').length;
+                
+                if (checkedCount > 4) {
+                    this.checked = false;
+                    alert('時間足は最大4つまで選択できます');
+                }
+            });
+        });
+        
+        // チャートを読み込む
+        async function loadCharts() {
+            currentPair = document.getElementById('pairSelect').value;
+            const checkedBoxes = document.querySelectorAll('.timeframe-checkbox input[type="checkbox"]:checked');
+            
+            if (checkedBoxes.length === 0) {
+                alert('少なくとも1つの時間足を選択してください');
+                return;
+            }
+            
+            if (checkedBoxes.length > 4) {
+                alert('時間足は最大4つまで選択できます');
+                return;
+            }
+            
+            selectedTimeframes = Array.from(checkedBoxes).map(cb => ({
+                value: cb.value,
+                label: cb.dataset.label,
+                apiValue: timeframeMap[cb.value]
+            }));
+            
+            document.getElementById('loadingIndicator').style.display = 'flex';
+            document.getElementById('analysisContent').style.display = 'none';
+            
+            // チャートグリッドをクリアして再構築
+            const chartsGrid = document.getElementById('chartsGrid');
+            chartsGrid.innerHTML = '';
+            
+            selectedTimeframes.forEach((tf, index) => {
+                const chartContainer = document.createElement('div');
+                chartContainer.className = 'chart-container';
+                chartContainer.id = `chart-${index}`;
+                
+                const chartHeader = document.createElement('div');
+                chartHeader.className = 'chart-header';
+                chartHeader.innerHTML = `
+                    <span class="chart-title">${currentPair} - ${tf.label}</span>
+                    <div class="chart-status">
+                        <span class="trend-badge" id="trend-${index}">分析中...</span>
+                    </div>
+                `;
+                
+                const chartEmbed = document.createElement('iframe');
+                chartEmbed.className = 'chart-embed';
+                chartEmbed.id = `chartEmbed-${index}`;
+                chartEmbed.src = getMT5ChartUrl(currentPair, tf.value);
+                
+                chartContainer.appendChild(chartHeader);
+                chartContainer.appendChild(chartEmbed);
+                chartsGrid.appendChild(chartContainer);
+            });
+            
+            try {
+                // 分析データを取得
+                await loadAnalysisData();
+                
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('analysisContent').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('sidebar').innerHTML = 
+                    `<div class="error-message">❌ データの読み込みに失敗しました: ${error.message}</div>`;
+            }
+        }
+        
+        // MT5チャートのURLを生成
+        function getMT5ChartUrl(pair, timeframe) {
+            // TradingView ウィジェットを使用（MT5スタイル）
+            const tvSymbol = getTradingViewSymbol(pair);
+            const tvInterval = getTradingViewInterval(timeframe);
+            
+            return `https://s.tradingview.com/embed-widget/advanced-chart/?locale=ja_JP#%7B%22symbol%22%3A%22${tvSymbol}%22%2C%22interval%22%3A%22${tvInterval}%22%2C%22timezone%22%3A%22Asia%2FTokyo%22%2C%22theme%22%3A%22dark%22%2C%22style%22%3A%221%22%2C%22withdateranges%22%3Atrue%2C%22hide_side_toolbar%22%3Afalse%2C%22allow_symbol_change%22%3Afalse%2C%22save_image%22%3Afalse%2C%22details%22%3Atrue%2C%22hotlist%22%3Afalse%2C%22calendar%22%3Afalse%2C%22studies%22%3A%5B%22BB%40tv-basicstudies%22%2C%22RSI%40tv-basicstudies%22%2C%22MACD%40tv-basicstudies%22%5D%2C%22width%22%3A%22100%25%22%2C%22height%22%3A%22100%25%22%7D`;
+        }
+        
+        // TradingViewのシンボル変換
+        function getTradingViewSymbol(pair) {
+            const tvMap = {
+                'EURUSD': 'FX%3AEURUSD',
+                'EURJPY': 'FX%3AEURJPY',
+                'USDJPY': 'FX%3AUSDJPY',
+                'XAUUSD': 'OANDA%3AXAUUSD'
+            };
+            return tvMap[pair] || 'FX%3AEURUSD';
+        }
+        
+        // TradingViewの時間足変換
+        function getTradingViewInterval(timeframe) {
+            const intervalMap = {
+                '1': '1',
+                '5': '5',
+                '15': '15',
+                '30': '30',
+                '60': '60',
+                '240': '240',
+                'D': 'D',
+                'W': 'W'
+            };
+            return intervalMap[timeframe] || '60';
+        }
+        
+        // 分析データを読み込む
+        async function loadAnalysisData() {
+            const apiSymbol = symbolMap[currentPair];
+            
+            try {
+                // 全時間足のトレンド分析を並列取得
+                const trendPromises = selectedTimeframes.map(tf => 
+                    fetch(`${BASE_URL}/market/trend/${apiSymbol}?timeframe=${tf.apiValue}`).then(r => r.json())
+                );
+                
+                const trends = await Promise.all(trendPromises);
+                
+                // トレンドバッジを更新
+                trends.forEach((trend, index) => {
+                    updateTrendBadge(index, trend.direction, trend.strength);
+                });
+                
+                // 現在価格とシグナルを取得（1時間足ベース）
+                const [quote, signal, indicators] = await Promise.all([
+                    fetch(`${BASE_URL}/market/quote/${apiSymbol}`).then(r => r.json()),
+                    fetch(`${BASE_URL}/signals/${apiSymbol}?timeframe=1h`).then(r => r.json()),
+                    fetch(`${BASE_URL}/market/indicators/${apiSymbol}?timeframe=1h`).then(r => r.json())
+                ]);
+                
+                // サイドバーを更新
+                updateSidebar(quote, signal, indicators, trends);
+                
+            } catch (error) {
+                throw error;
+            }
+        }
+        
+        // トレンドバッジを更新
+        function updateTrendBadge(index, direction, strength) {
+            const badge = document.getElementById(`trend-${index}`);
+            if (!badge) return;
+            
+            badge.className = 'trend-badge';
+            
+            let text = '';
+            if (direction === 'bullish') {
+                badge.classList.add('trend-bullish');
+                text = `↗ 上昇 ${strength.toFixed(0)}%`;
+            } else if (direction === 'bearish') {
+                badge.classList.add('trend-bearish');
+                text = `↘ 下降 ${strength.toFixed(0)}%`;
+            } else {
+                badge.classList.add('trend-sideways');
+                text = `↔ レンジ ${strength.toFixed(0)}%`;
+            }
+            
+            badge.textContent = text;
+        }
+        
+        // サイドバーを更新
+        function updateSidebar(quote, signal, indicators, trends) {
+            const isPositive = quote.change >= 0;
+            const signalClass = signal.signal.includes('buy') ? 'signal-buy' : 
+                                signal.signal.includes('sell') ? 'signal-sell' : 'signal-neutral';
+            
+            // マルチタイムフレームトレンド概要
+            const trendSummary = selectedTimeframes.map((tf, index) => {
+                const trend = trends[index];
+                const icon = trend.direction === 'bullish' ? '↗️' : trend.direction === 'bearish' ? '↘️' : '↔️';
+                const color = trend.direction === 'bullish' ? '#4caf50' : trend.direction === 'bearish' ? '#f44336' : '#ff9800';
+                return `
+                    <li class="indicator-item">
+                        <span class="indicator-name">${tf.label}</span>
+                        <span class="indicator-value" style="color: ${color}">
+                            ${icon} ${trend.direction === 'bullish' ? '上昇' : trend.direction === 'bearish' ? '下降' : 'レンジ'} (${trend.strength.toFixed(0)}%)
+                        </span>
+                    </li>
+                `;
+            }).join('');
+            
+            const html = `
+                <div class="info-card">
+                    <h3>💰 ${currentPair}</h3>
+                    <div class="price-display ${isPositive ? 'price-positive' : 'price-negative'}">
+                        ${quote.price.toFixed(currentPair === 'USDJPY' || currentPair === 'EURJPY' ? 3 : 5)}
+                    </div>
+                    <div class="price-change">
+                        <span class="${isPositive ? 'price-positive' : 'price-negative'}">
+                            ${isPositive ? '▲' : '▼'} ${Math.abs(quote.change).toFixed(currentPair === 'USDJPY' || currentPair === 'EURJPY' ? 3 : 5)}
+                        </span>
+                        <span class="${isPositive ? 'price-positive' : 'price-negative'}">
+                            (${isPositive ? '+' : ''}${quote.change_percent.toFixed(2)}%)
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 0.85em;">
+                        <div>高値: <strong>${quote.high.toFixed(currentPair === 'USDJPY' || currentPair === 'EURJPY' ? 3 : 5)}</strong></div>
+                        <div>安値: <strong>${quote.low.toFixed(currentPair === 'USDJPY' || currentPair === 'EURJPY' ? 3 : 5)}</strong></div>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <h3>📊 マルチタイムフレーム分析</h3>
+                    <ul class="indicator-list">
+                        ${trendSummary}
+                    </ul>
+                </div>
+                
+                <div class="signal-card">
+                    <h3>💡 トレーディングシグナル (1h)</h3>
+                    <div class="signal-header">
+                        <span class="signal-type ${signalClass}">
+                            ${getSignalText(signal.signal)}
+                        </span>
+                        <span style="font-size: 1.1em; font-weight: bold;">
+                            ${signal.confidence.toFixed(0)}%
+                        </span>
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" style="width: ${signal.confidence}%"></div>
+                    </div>
+                    
+                    ${signal.entry_price ? `
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; font-size: 0.85em;">
+                        <div style="text-align: center;">
+                            <div style="color: #b0b0b0; font-size: 0.85em;">エントリー</div>
+                            <div style="font-weight: bold; color: #4fc3f7;">${signal.entry_price.toFixed(currentPair === 'USDJPY' || currentPair === 'EURJPY' ? 3 : 5)}</div>
+                        </div>
+                        ${signal.stop_loss ? `
+                        <div style="text-align: center;">
+                            <div style="color: #b0b0b0; font-size: 0.85em;">損切り</div>
+                            <div style="font-weight: bold; color: #f44336;">${signal.stop_loss.toFixed(currentPair === 'USDJPY' || currentPair === 'EURJPY' ? 3 : 5)}</div>
+                        </div>
+                        ` : ''}
+                        ${signal.take_profit ? `
+                        <div style="text-align: center;">
+                            <div style="color: #b0b0b0; font-size: 0.85em;">利確</div>
+                            <div style="font-weight: bold; color: #4caf50;">${signal.take_profit.toFixed(currentPair === 'USDJPY' || currentPair === 'EURJPY' ? 3 : 5)}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+                    
+                    <div style="margin-top: 12px;">
+                        <h4 style="color: #b0b0b0; margin-bottom: 8px; font-size: 0.9em;">シグナルの根拠:</h4>
+                        <ul class="reasons-list">
+                            ${signal.reasons.map(r => `<li class="reason-item">✓ ${r}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <h3>📈 テクニカル指標 (1h)</h3>
+                    <ul class="indicator-list">
+                        ${indicators.rsi !== null ? `
+                        <li class="indicator-item">
+                            <span class="indicator-name">RSI</span>
+                            <span class="indicator-value" style="color: ${getRSIColor(indicators.rsi)}">
+                                ${indicators.rsi.toFixed(1)}
+                            </span>
+                        </li>` : ''}
+                        
+                        ${indicators.macd !== null ? `
+                        <li class="indicator-item">
+                            <span class="indicator-name">MACD</span>
+                            <span class="indicator-value" style="color: ${indicators.macd > 0 ? '#4caf50' : '#f44336'}">
+                                ${indicators.macd.toFixed(6)}
+                            </span>
+                        </li>` : ''}
+                        
+                        ${indicators.sma_20 !== null ? `
+                        <li class="indicator-item">
+                            <span class="indicator-name">SMA(20)</span>
+                            <span class="indicator-value">${indicators.sma_20.toFixed(currentPair === 'USDJPY' || currentPair === 'EURJPY' ? 3 : 5)}</span>
+                        </li>` : ''}
+                        
+                        ${indicators.sma_50 !== null ? `
+                        <li class="indicator-item">
+                            <span class="indicator-name">SMA(50)</span>
+                            <span class="indicator-value">${indicators.sma_50.toFixed(currentPair === 'USDJPY' || currentPair === 'EURJPY' ? 3 : 5)}</span>
+                        </li>` : ''}
+                        
+                        ${indicators.bb_upper !== null ? `
+                        <li class="indicator-item">
+                            <span class="indicator-name">BB上限</span>
+                            <span class="indicator-value">${indicators.bb_upper.toFixed(currentPair === 'USDJPY' || currentPair === 'EURJPY' ? 3 : 5)}</span>
+                        </li>
+                        <li class="indicator-item">
+                            <span class="indicator-name">BB下限</span>
+                            <span class="indicator-value">${indicators.bb_lower.toFixed(currentPair === 'USDJPY' || currentPair === 'EURJPY' ? 3 : 5)}</span>
+                        </li>` : ''}
+                    </ul>
+                </div>
+            `;
+            
+            document.getElementById('analysisContent').innerHTML = html;
+        }
+        
+        function getSignalText(signal) {
+            const map = {
+                'strong_buy': '強い買い',
+                'buy': '買い',
+                'neutral': '中立',
+                'sell': '売り',
+                'strong_sell': '強い売り'
+            };
+            return map[signal] || signal;
+        }
+        
+        function getRSIColor(rsi) {
+            if (rsi > 70) return '#f44336';
+            if (rsi < 30) return '#4caf50';
+            return '#ff9800';
+        }
+        
+        // 初期化
+        window.addEventListener('load', () => {
+            // 初期状態では何もしない（ユーザーが選択してから表示）
+        });
+        
+        // ペア変更時に自動再読み込み
+        document.getElementById('pairSelect').addEventListener('change', () => {
+            if (selectedTimeframes.length > 0) {
+                loadCharts();
+            }
+        });
+    </script>
+</body>
+</html>
